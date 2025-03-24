@@ -1,2 +1,2 @@
-# web3-medical-invoice-polygon-zkevm
-Medical Invoice on Polygon zkevm testnet 
+# web3-medical-invoice-storacha
+Web3 version of Medical Invoice with save and retrieve from Storacha
