@@ -81,14 +81,15 @@ class App extends Component {
         <div id="workbookControl"></div>
         <div id="tableeditor">editor goes here</div>
         <div id="msg"></div>
-        {this.state.listFiles ? (
+        {this.state.listFiles && (
           <div className="App-files">
             <Files
               file={this.state.selectedFile}
               updateSelectedFile={this.updateSelectedFile}
-            />{" "}
+              toggleListFiles={this.toggleListFiles}
+            />
           </div>
-        ) : null}
+        )}
       </div>
     );
   }

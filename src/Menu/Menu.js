@@ -1,13 +1,46 @@
 import React, { Component } from "react";
 import "./Menu.css";
 import * as AppGeneral from "../socialcalc/AppGeneral";
-import { File, Local } from "../storage/LocalStorage.js";
+import { Files, Local } from "../storage/LocalStorage.js";
 import { DATA } from "../app-data.js";
+import { create } from "@web3-storage/w3up-client";
 
 class Menu extends Component {
   constructor(props) {
     super(props);
     this.store = new Local(this.props.file);
+  }
+
+  async uploadToIPFS(fileData) {
+    try {
+      this.setState({ isUploading: true });
+      
+      // Get the saved email and space from localStorage
+      const savedEmail = localStorage.getItem('ipfsUserEmail');
+      const savedSpace = localStorage.getItem('ipfsUserSpace');
+      
+      if (!savedEmail || !savedSpace) {
+        throw new Error('IPFS account not set up. Please set up your IPFS account in the Files section first.');
+      }
+      
+      const client = await create();
+      const account = await client.login(savedEmail);
+      await client.setCurrentSpace(savedSpace);
+      
+      const formattedFile = new File(
+        [JSON.stringify(fileData)],
+        `${fileData.name}.json`,
+        { type: 'application/json' }
+      );
+      
+      const cid = await client.uploadDirectory([formattedFile]);
+      return cid.toString();
+    } catch (error) {
+      console.error('IPFS Upload Error:', error);
+      throw error;
+    } finally {
+      this.setState({ isUploading: false });
+    }
   }
 
   doPrint() {
@@ -25,7 +58,7 @@ class Menu extends Component {
     }
     const content = encodeURIComponent(AppGeneral.getSpreadsheetContent());
     const data = this.store._getFile(this.props.file);
-    const file = new File(
+    const file = new Files(
       data.created,
       new Date().toString(),
       content,
@@ -36,36 +69,59 @@ class Menu extends Component {
     window.alert(`File ${this.props.file} updated successfully! `);
   }
 
-  doSaveAs() {
-    event.preventDefault();
-    const filename = window.prompt("Enter filename : ");
+  doSaveAs = async () => {
+    const filename = window.prompt("Enter filename:");
     if (filename) {
       if (this._validateName(filename)) {
-        // filename valid . go on save
-        const content = encodeURIComponent(AppGeneral.getSpreadsheetContent());
-        // console.log(content);
-        const file = new File(
-          new Date().toString(),
-          new Date().toString(),
-          content,
-          filename
-        );
-        // const data = { created: file.created, modified: file.modified, content: file.content, password: file.password };
-        // console.log(JSON.stringify(data));
-        this.store._saveFile(file);
-        this.props.updateSelectedFile(filename);
-        window.alert(`File ${filename} saved successfully! `);
+        try {
+          const content = encodeURIComponent(AppGeneral.getSpreadsheetContent());
+          const fileData = {
+            name: filename,
+            content: content,
+            created: new Date().toString(),
+            modified: new Date().toString(),
+            password : this.props.file
+          };
+
+          // Upload to IPFS
+          const cid = await this.uploadToIPFS(fileData);
+          
+          // Save locally
+          const file = new Files(
+            fileData.created,
+            fileData.modified,
+            content,
+            filename,
+            this.props.file
+          );
+          this.store._saveFile(file);
+          this.props.updateSelectedFile(filename);
+          
+          this.setState({
+            showAlert: true,
+          });
+          window.alert(`File ${filename} saved successfully! IPFS CID: ${cid}`)
+        } catch (error) {
+          console.error("Save As error:", error);
+          window.alert(`Error saving file: ${error.message}`)
+          this.setState({
+            showAlert: true,
+          });
+        }
       } else {
         window.alert(`Filename cannot be ${this.props.file}`);
+        this.setState({
+          showAlert: true,
+        });
       }
     }
-  }
+  };
 
   newFile() {
     if (this.props.file !== "default") {
       const content = encodeURIComponent(AppGeneral.getSpreadsheetContent());
       const data = this.store._getFile(this.props.file);
-      const file = new File(
+      const file = new Files(
         data.created,
         new Date().toString(),
         content,

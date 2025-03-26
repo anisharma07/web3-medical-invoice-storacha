@@ -1,6 +1,6 @@
 const storage = window.localStorage;
 
-export class File {
+export class Files {
     created: string;
     modified: string;
     name: string;
@@ -23,7 +23,7 @@ export class Local {
         this.PREFIX = 'Files_Storage_';
     }
 
-    _saveFile(file: File) {
+    _saveFile(file: Files) {
         let data = {
             created: file.created,
             modified: file.modified,
